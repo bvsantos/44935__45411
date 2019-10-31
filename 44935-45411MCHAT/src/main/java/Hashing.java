@@ -3,6 +3,12 @@ import keystore.GenerateKeys;
 import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+
+import org.bouncycastle.crypto.tls.SessionParameters;
+
+import Exceptions.IncorretHashException;
+import Exceptions.SesssionMetaDataException;
+
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -109,7 +115,7 @@ public class Hashing {
 		return returnValue;
     }
     
-    public byte[] decript(byte[] data) throws BadPaddingException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, IllegalBlockSizeException, NoSuchProviderException, NoSuchPaddingException, InvalidKeyException {
+    public byte[] decript(byte[] data) throws BadPaddingException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, IllegalBlockSizeException, NoSuchProviderException, NoSuchPaddingException, InvalidKeyException, SesssionMetaDataException, IncorretHashException {
     	int offset = 0;
 		int seaLength = new BigInteger(Arrays.copyOfRange(data, offset, Integer.BYTES)).intValue();
 		offset+=Integer.BYTES;
@@ -124,13 +130,40 @@ public class Hashing {
 		offset += seaLength;
 		byte SMCPmsgType = encodedMessage[offset];
 		offset++;
+		//TODO
+		//evitar repetição codigo aqui
 		byte[] sha = Arrays.copyOfRange(encodedMessage, offset, offset+shaLength);
+		byte[] sAttributes = computeSAttributes(
+    			new ArrayList<byte[]>() {
+    	    		/**
+					 * 
+					 */
+					private static final long serialVersionUID = 19159113244506189L;
+
+					{
+    	    			add(props.getProperty("SID").getBytes());
+    	    			add(((String)(host+":"+port)).getBytes());
+    	    			add(props.getProperty("SEA").getBytes());
+    	    			add(props.getProperty("MODE").getBytes());
+    	    			add(props.getProperty("PADDING").getBytes());
+    	    			add(props.getProperty("INTHASH").getBytes());
+    	    			add(props.getProperty("MAC").getBytes());
+    	    			
+    	    		}
+    			},
+    	    		props.getProperty("SID").getBytes().length+((String)(host+":"+port)).getBytes().length+props.getProperty("SEA").getBytes().length+props.getProperty("MODE").getBytes().length+props.getProperty("PADDING").getBytes().length+props.getProperty("INTHASH").getBytes().length+props.getProperty("MAC").getBytes().length
+    	);
+    	
+    	byte[] sAttributesEncoded = sha256Encoder(sAttributes);
+ 
 		offset+=shaLength;
 		int payLoadSize = new BigInteger(Arrays.copyOfRange(data, offset, offset+Integer.BYTES)).intValue();
 		offset += Integer.BYTES;
 		byte[] encodedPayload = Arrays.copyOfRange(encodedMessage, offset, offset+payLoadSize);
-
-    	return decryptSecurePayload(encodedMessage);
+	   	if(!Arrays.equals(sha, sAttributesEncoded))
+	   		throw new SesssionMetaDataException();
+	   	else
+	   		return decryptSecurePayload(encodedMessage);
 	}
 
     public byte[] sha256Encoder(byte[] data) throws NoSuchAlgorithmException {
@@ -196,7 +229,7 @@ public class Hashing {
         return retValue;
     }
     
-    public byte[] decryptSecurePayload(byte[] data) throws InvalidKeyException, BadPaddingException, IllegalBlockSizeException, InvalidAlgorithmParameterException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
+    public byte[] decryptSecurePayload(byte[] data) throws InvalidKeyException, BadPaddingException, IllegalBlockSizeException, InvalidAlgorithmParameterException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, IncorretHashException {
         cipher = Cipher.getInstance(props.getProperty("SEA")+"/"+props.getProperty("MODE")+"/"+props.getProperty("PADDING"),"BC");
         
         int dataSize = new BigInteger(Arrays.copyOfRange(data, 0, Integer.BYTES)).intValue();
@@ -220,8 +253,12 @@ public class Hashing {
         byte[] username = Arrays.copyOfRange(plainText, Integer.BYTES*2, Integer.BYTES*2+userL);
         Long rand = ByteBuffer.wrap(Arrays.copyOfRange(plainText, Integer.BYTES*2+userL, Integer.BYTES*2+userL+Long.BYTES)).getLong();
         byte[] msg=Arrays.copyOfRange(plainText, Integer.BYTES*2+userL+Long.BYTES, messageL+Integer.BYTES*2+userL+Long.BYTES);
+        byte[] msgCompare = sha256Encoder(msg);
         byte[] encoded=Arrays.copyOfRange(plainText, messageL+Integer.BYTES*2+userL+Long.BYTES, messageL+Integer.BYTES*2+userL+Long.BYTES+plainText.length);
-        return msg;
+        if(!Arrays.equals(msgCompare, encoded))
+        	throw new IncorretHashException();
+        else
+        	return msg;
     }
     
     public byte[] computeSAttributes(ArrayList<byte[]> arr,int totalSize) {
