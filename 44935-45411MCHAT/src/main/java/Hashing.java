@@ -3,12 +3,6 @@ import keystore.GenerateKeys;
 import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-
-import org.bouncycastle.crypto.tls.SessionParameters;
-
-import Exceptions.IncorretHashException;
-import Exceptions.SesssionMetaDataException;
-
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -40,7 +34,8 @@ public class Hashing {
         this.macKey = GenerateKeys.loadKey(aux+"mackm");
         this.sessionKey = new SecretKeySpec(this.sessionKey.getEncoded(),props.getProperty("SEA"));
         this.macKey = new SecretKeySpec(this.sessionKey.getEncoded(),props.getProperty("MAC"));
-        cipher = Cipher.getInstance(props.getProperty("SEA")+"/"+props.getProperty("MODE")+"/"+props.getProperty("PADDING"),"BC");
+        if(props.getProperty("MODE").equals("NoPadding"));
+        	cipher = Cipher.getInstance(props.getProperty("SEA")+"/"+props.getProperty("MODE")+"/"+props.getProperty("PADDING"),"BC");
         hMac = Mac.getInstance(props.getProperty("MAC"));
         hMac.init(this.macKey);
     }
@@ -102,6 +97,7 @@ public class Hashing {
 					private static final long serialVersionUID = 4680585511287574721L;
 
 					{
+						add(ByteBuffer.allocate( Integer.BYTES ).putInt(finalMessage.length).array());
 						add(ByteBuffer.allocate( Integer.BYTES ).putInt(props.getProperty("SEA").getBytes().length).array());
 						add(ByteBuffer.allocate( Integer.BYTES ).putInt(sAttributesEncoded.length).array());
     	    			add(finalMessage);
@@ -109,20 +105,23 @@ public class Hashing {
     	    			
     	    		}
     			},
-    			hMac.getMacLength()+finalMessage.length+2*Integer.BYTES
+    			hMac.getMacLength()+finalMessage.length+3*Integer.BYTES
     			);
     	
 		return returnValue;
     }
     
-    public byte[] decript(byte[] data) throws BadPaddingException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, IllegalBlockSizeException, NoSuchProviderException, NoSuchPaddingException, InvalidKeyException, SesssionMetaDataException, IncorretHashException {
+    public byte[] decript(byte[] data) throws BadPaddingException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, IllegalBlockSizeException, NoSuchProviderException, NoSuchPaddingException, InvalidKeyException {
     	int offset = 0;
-		int seaLength = new BigInteger(Arrays.copyOfRange(data, offset, Integer.BYTES)).intValue();
+    	int packageLength = new BigInteger(Arrays.copyOfRange(data, offset, Integer.BYTES)).intValue();
+    	offset+=Integer.BYTES;
+		int seaLength = new BigInteger(Arrays.copyOfRange(data, offset, offset+Integer.BYTES)).intValue();
 		offset+=Integer.BYTES;
 		int shaLength = new BigInteger(Arrays.copyOfRange(data, offset, offset+Integer.BYTES)).intValue();
 		offset+=Integer.BYTES;
-		byte[] encodedMessage = Arrays.copyOfRange(data, offset,hMac.getMacLength());
-		hMac.update(encodedMessage);
+		byte[] encodedMessage = Arrays.copyOfRange(data, offset,packageLength+offset);
+		//byte[] encodedMessage = Arrays.copyOfRange(data, offset,hMac.getMacLength());
+//		hMac.update(encodedMessage);
 
 		byte vID = encodedMessage[0];
 		offset = 1;
@@ -130,50 +129,26 @@ public class Hashing {
 		offset += seaLength;
 		byte SMCPmsgType = encodedMessage[offset];
 		offset++;
-		//TODO
-		//evitar repetição codigo aqui
 		byte[] sha = Arrays.copyOfRange(encodedMessage, offset, offset+shaLength);
-		byte[] sAttributes = computeSAttributes(
-    			new ArrayList<byte[]>() {
-    	    		/**
-					 * 
-					 */
-					private static final long serialVersionUID = 19159113244506189L;
-
-					{
-    	    			add(props.getProperty("SID").getBytes());
-    	    			add(((String)(host+":"+port)).getBytes());
-    	    			add(props.getProperty("SEA").getBytes());
-    	    			add(props.getProperty("MODE").getBytes());
-    	    			add(props.getProperty("PADDING").getBytes());
-    	    			add(props.getProperty("INTHASH").getBytes());
-    	    			add(props.getProperty("MAC").getBytes());
-    	    			
-    	    		}
-    			},
-    	    		props.getProperty("SID").getBytes().length+((String)(host+":"+port)).getBytes().length+props.getProperty("SEA").getBytes().length+props.getProperty("MODE").getBytes().length+props.getProperty("PADDING").getBytes().length+props.getProperty("INTHASH").getBytes().length+props.getProperty("MAC").getBytes().length
-    	);
-    	
-    	byte[] sAttributesEncoded = sha256Encoder(sAttributes);
- 
 		offset+=shaLength;
-		int payLoadSize = new BigInteger(Arrays.copyOfRange(data, offset, offset+Integer.BYTES)).intValue();
+		int payLoadSize = new BigInteger(Arrays.copyOfRange(encodedMessage, offset, offset+Integer.BYTES)).intValue();
 		offset += Integer.BYTES;
 		byte[] encodedPayload = Arrays.copyOfRange(encodedMessage, offset, offset+payLoadSize);
-	   	if(!Arrays.equals(sha, sAttributesEncoded))
-	   		throw new SesssionMetaDataException();
-	   	else
-	   		return decryptSecurePayload(encodedMessage);
+
+    	return decryptSecurePayload(encodedPayload);
 	}
 
     public byte[] sha256Encoder(byte[] data) throws NoSuchAlgorithmException {
         MessageDigest digest = MessageDigest.getInstance(this.props.getProperty("INTHASH"));
-        System.out.println(data.length);
         return digest.digest(data);
     }
 
     public byte[] encriptSecurePayload(byte[] data, String username) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, ShortBufferException, BadPaddingException, IllegalBlockSizeException, NoSuchProviderException {
-        cipher = Cipher.getInstance(props.getProperty("SEA")+"/"+props.getProperty("MODE")+"/"+props.getProperty("PADDING"),"BC");
+        if(props.getProperty("PADDING").equals("NoPadding"))
+        	cipher = Cipher.getInstance(props.getProperty("SEA")+"/"+props.getProperty("MODE")+"/"+props.getProperty("PADDING"),"BC");
+        else
+        	cipher = Cipher.getInstance(props.getProperty("SEA")+"/"+props.getProperty("MODE")+"/"+props.getProperty("PADDING"));
+        	
         byte[] encoded = sha256Encoder(data);
 //		TODO: Este Ã© o long que tem de ser incrementado o objectivo nao Ã© ser um random long
         SecureRandom s = new SecureRandom();
@@ -229,16 +204,22 @@ public class Hashing {
         return retValue;
     }
     
-    public byte[] decryptSecurePayload(byte[] data) throws InvalidKeyException, BadPaddingException, IllegalBlockSizeException, InvalidAlgorithmParameterException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, IncorretHashException {
-        cipher = Cipher.getInstance(props.getProperty("SEA")+"/"+props.getProperty("MODE")+"/"+props.getProperty("PADDING"),"BC");
+    public byte[] decryptSecurePayload(byte[] data) throws InvalidKeyException, BadPaddingException, IllegalBlockSizeException, InvalidAlgorithmParameterException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
+    	if(props.getProperty("PADDING").equals("NoPadding"))
+        	cipher = Cipher.getInstance(props.getProperty("SEA")+"/"+props.getProperty("MODE")+"/"+props.getProperty("PADDING"),"BC");
+        else
+        	cipher = Cipher.getInstance(props.getProperty("SEA")+"/"+props.getProperty("MODE")+"/"+props.getProperty("PADDING"));
         
         int dataSize = new BigInteger(Arrays.copyOfRange(data, 0, Integer.BYTES)).intValue();
         byte[] mIV = Arrays.copyOfRange(data, Integer.BYTES, Integer.BYTES+16);
         byte[] m = Arrays.copyOfRange(data, Integer.BYTES+16,dataSize);
 
-        cipher.init(Cipher.DECRYPT_MODE,this.sessionKey , new IvParameterSpec(mIV));
+        if(props.getProperty("MODE").equals("CTR") || props.getProperty("MODE").equals("GCM"))
+        	cipher.init(Cipher.DECRYPT_MODE,this.sessionKey , new IvParameterSpec(mIV));
+        else
+        	cipher.init(Cipher.DECRYPT_MODE,this.sessionKey);
 
-        byte[] plainText = cipher.doFinal(m);
+        byte[] plainText = cipher.doFinal(Arrays.copyOfRange(data, Integer.BYTES+16,dataSize));
         int messageLength = plainText.length - hMac.getMacLength();
 
         hMac.update(plainText, 0, messageLength);
@@ -253,12 +234,8 @@ public class Hashing {
         byte[] username = Arrays.copyOfRange(plainText, Integer.BYTES*2, Integer.BYTES*2+userL);
         Long rand = ByteBuffer.wrap(Arrays.copyOfRange(plainText, Integer.BYTES*2+userL, Integer.BYTES*2+userL+Long.BYTES)).getLong();
         byte[] msg=Arrays.copyOfRange(plainText, Integer.BYTES*2+userL+Long.BYTES, messageL+Integer.BYTES*2+userL+Long.BYTES);
-        byte[] msgCompare = sha256Encoder(msg);
         byte[] encoded=Arrays.copyOfRange(plainText, messageL+Integer.BYTES*2+userL+Long.BYTES, messageL+Integer.BYTES*2+userL+Long.BYTES+plainText.length);
-        if(!Arrays.equals(msgCompare, encoded))
-        	throw new IncorretHashException();
-        else
-        	return msg;
+        return msg;
     }
     
     public byte[] computeSAttributes(ArrayList<byte[]> arr,int totalSize) {

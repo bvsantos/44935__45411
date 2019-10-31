@@ -5,8 +5,6 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
 
-import Exceptions.AlrdyGotMessageException;
-
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
@@ -65,7 +63,7 @@ public class MulticastChat extends Thread {
 
     protected boolean isActive;
     protected int pport;
-    protected long sequence;
+
     public MulticastChat(String username, InetAddress group, int port,
                          int ttl,
                          MulticastChatEventListener listener) throws ParserConfigurationException, SAXException, IOException, CertificateException, NoSuchPaddingException, InvalidKeyException, NoSuchAlgorithmException, KeyStoreException, NoSuchProviderException, UnrecoverableEntryException, BadPaddingException, InvalidAlgorithmParameterException, ShortBufferException, IllegalBlockSizeException {
@@ -75,7 +73,6 @@ public class MulticastChat extends Thread {
         this.groupAdress = group;
         this.listener = listener;
         isActive = true;
-        this.sequence = 0;
 
         // create & configure multicast socket
         //msocket = new MulticastSocket(port);
@@ -173,20 +170,7 @@ public class MulticastChat extends Thread {
     protected void processJoin(DataInputStream istream, InetAddress address,
                                int port) throws IOException {
         String name = istream.readUTF();
-        if(sequence!=0) {
-	        ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
-	        DataOutputStream dataStream = new DataOutputStream(byteStream);
-	
-	        dataStream.writeLong(CHAT_MAGIC_NUMBER);
-	        dataStream.writeInt(4);
-	        dataStream.writeLong(this.sequence);
-	        dataStream.close();
-	
-	        byte[] data = byteStream.toByteArray();
-	        DatagramPacket packet = new DatagramPacket(data, data.length, groupAdress,
-	        		pport);
-	        msocket.send(packet,this.username);
-        }
+
         try {
             listener.chatParticipantJoined(name, address, port);
         } catch (Throwable e) {}
@@ -229,11 +213,10 @@ public class MulticastChat extends Thread {
 
         dataStream.writeLong(CHAT_MAGIC_NUMBER);
         dataStream.writeInt(MESSAGE);
-        dataStream.writeLong(this.sequence+1);
         dataStream.writeUTF(username);
         dataStream.writeUTF(message);
         dataStream.close();
-        System.out.println(this.sequence);
+
         byte[] data = byteStream.toByteArray();
         DatagramPacket packet = new DatagramPacket(data, data.length, groupAdress,
         		pport);
@@ -245,17 +228,13 @@ public class MulticastChat extends Thread {
     //
     protected void processMessage(DataInputStream istream,
                                   InetAddress address,
-                                  int port) throws IOException, AlrdyGotMessageException {
-    	long msgSeq=istream.readLong();
+                                  int port) throws IOException {
         String username = istream.readUTF();
         String message = istream.readUTF();
-        if(msgSeq<=this.sequence)
-        	throw new AlrdyGotMessageException();
-        else
-	        try {
-	        	this.sequence=msgSeq+1;
-	            listener.chatMessageReceived(username, address, port, message);
-	        } catch (Throwable e) {}
+
+        try {
+            listener.chatMessageReceived(username, address, port, message);
+        } catch (Throwable e) {}
     }
 
     // Loops - recepcao e desmultiplexagem de datagramas de acordo com
@@ -294,9 +273,6 @@ public class MulticastChat extends Thread {
                     case MESSAGE:
                         processMessage(istream, packet.getAddress(), packet.getPort());
                         break;
-                    case 4:
-                    	sequence = istream.readLong();
-                    	break;
                     default:
                         error("Cod de operacao desconhecido " + opCode + " enviado de "
                                 + packet.getAddress() + ":" + packet.getPort());

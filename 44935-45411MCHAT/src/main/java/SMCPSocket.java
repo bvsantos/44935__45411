@@ -18,8 +18,8 @@ public class SMCPSocket extends MulticastSocket {
     public void send(DatagramPacket p, String username) throws IOException{
         try {
 //          p.setData(securePayloadEncrypt(p.getData(),username));
-			p.setData(this.hasher.encriptSecurePayload(p.getData(),username));
-           // p.setData(this.hasher.encript(p.getData(),username));
+			//p.setData(this.hasher.encriptSecurePayload(p.getData(),username));
+            p.setData(this.hasher.encript(p.getData(),username));
 		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException | ShortBufferException
 				| BadPaddingException | IllegalBlockSizeException | NoSuchProviderException e) {
 			e.printStackTrace();
@@ -34,8 +34,8 @@ public class SMCPSocket extends MulticastSocket {
 		try {
 	        byte[] data;
 //        	byte[] data = securePayloadDecrypt(p.getData());
-			data = this.hasher.decryptSecurePayload(p.getData());
-            //data = this.hasher.decript(p.getData());
+			//data = this.hasher.decryptSecurePayload(p.getData());
+            data = this.hasher.decript(p.getData());
 	        p.setData(data); 
 		} catch ( BadPaddingException | IllegalBlockSizeException
 				| InvalidAlgorithmParameterException | NoSuchPaddingException | NoSuchAlgorithmException
