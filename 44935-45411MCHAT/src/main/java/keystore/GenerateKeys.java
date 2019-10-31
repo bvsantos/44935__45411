@@ -3,6 +3,9 @@ package keystore;
 
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
+
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.security.*;
@@ -12,7 +15,7 @@ public class GenerateKeys {
     private static final String KEYSTORE_LOCATION = "src/main/java/keystore/keystoreAES256.jks";
     private static final String KEYSTORE_PASS = "feialua";
     public static void main(String[] args) throws CertificateException, UnrecoverableEntryException, NoSuchAlgorithmException, KeyStoreException, IOException {
-
+        Security.addProvider(new BouncyCastleProvider());
         //loadKey("");
         generateKey();
     }
@@ -21,28 +24,30 @@ public class GenerateKeys {
         KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
         FileInputStream stream = new FileInputStream(KEYSTORE_LOCATION);
         ks.load(stream, KEYSTORE_PASS.toCharArray());
+        
         KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(KEYSTORE_PASS.toCharArray());
 
         ks.getEntry("JCEKS", protParam);
 
         // save my secret key
 
-        KeyGenerator generator = KeyGenerator.getInstance("HMacSHA256");
+        KeyGenerator generator = KeyGenerator.getInstance("DES");
 
-        generator.init(256);
+        generator.init(64);
 
         Key encryptionKey = generator.generateKey();
-//        KeyStore.SecretKeyEntry skEntry =
-//                new KeyStore.SecretKeyEntry((SecretKey) encryptionKey);
-//        ks.setEntry("Asessionkey", skEntry, protParam);
         KeyStore.SecretKeyEntry skEntry =
+          new KeyStore.SecretKeyEntry((SecretKey) encryptionKey);
+        //ks.setEntry("Csessionkey", skEntry, protParam);
+        //KeyStore.SecretKeyEntry skEntry =
                 new KeyStore.SecretKeyEntry((SecretKey) encryptionKey);
-        ks.setEntry("Amackm", skEntry, protParam);
+        ks.setEntry("Cmackm", skEntry, protParam);
 //      KeyStore.SecretKeyEntry skEntry =
 //                new KeyStore.SecretKeyEntry((SecretKey) encryptionKey);
-//        ks.setEntry("Amacka", skEntry, protParam);
+        ks.setEntry("Cmacka", skEntry, protParam);
 
         // store away the keystore
+
         java.io.FileOutputStream fos = null;
         try {
             fos = new java.io.FileOutputStream(KEYSTORE_LOCATION);
