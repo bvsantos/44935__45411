@@ -39,6 +39,75 @@ public class Hashing {
         hMac.init(this.macKey);
     }
     
+    public byte[] encript(byte[] data,String userName) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, ShortBufferException, BadPaddingException, IllegalBlockSizeException, NoSuchProviderException {
+    	byte[] securePayload = encriptSecurePayload(data, userName);
+    	
+    	byte[] sAttributes = computeSAttributes(
+    			new ArrayList<byte[]>() {
+    	    		/**
+					 * 
+					 */
+					private static final long serialVersionUID = 19159113244506189L;
+
+					{
+    	    			add(props.getProperty("SID").getBytes());
+    	    			add(((String)(host+":"+port)).getBytes());
+    	    			add(props.getProperty("SEA").getBytes());
+    	    			add(props.getProperty("MODE").getBytes());
+    	    			add(props.getProperty("PADDING").getBytes());
+    	    			add(props.getProperty("INTHASH").getBytes());
+    	    			add(props.getProperty("MAC").getBytes());
+    	    			
+    	    		}
+    			},
+    	    		props.getProperty("SID").getBytes().length+((String)(host+":"+port)).getBytes().length+props.getProperty("SEA").getBytes().length+props.getProperty("MODE").getBytes().length+props.getProperty("PADDING").getBytes().length+props.getProperty("INTHASH").getBytes().length+props.getProperty("MAC").getBytes().length
+    	);
+    	
+    	byte[] sAttributesEncoded = sha256Encoder(sAttributes);
+    	
+    	byte[] finalMessage = computeSAttributes(
+    			new ArrayList<byte[]>() {
+    	    		/**
+					 * 
+					 */
+					private static final long serialVersionUID = 8672594177872022946L;
+
+					{
+    	    			add(ByteBuffer.allocate( 1 ).put((byte)0).array());
+    	    			add(props.getProperty("SEA").getBytes());
+    	    			add(ByteBuffer.allocate( 1 ).put((byte) 0x01).array());
+    	    			add(sAttributesEncoded);
+    	    			add(ByteBuffer.allocate( Integer.BYTES ).putInt(securePayload.length).array());
+    	    			add(securePayload);
+    	    			
+    	    		}
+    			},
+    	    		1+props.getProperty("SEA").getBytes().length+1+sAttributesEncoded.length+Integer.BYTES+securePayload.length
+    			);
+    	
+    	hMac.update(finalMessage);
+    	
+    	
+    	byte[] returnValue = computeSAttributes(
+    			new ArrayList<byte[]>() {
+					/**
+					 * 
+					 */
+					private static final long serialVersionUID = 4680585511287574721L;
+
+					{
+						add(ByteBuffer.allocate( Integer.BYTES ).putInt(props.getProperty("SEA").getBytes().length).array());
+						add(ByteBuffer.allocate( Integer.BYTES ).putInt(sAttributesEncoded.length).array());
+    	    			add(finalMessage);
+    	    			add(hMac.doFinal());
+    	    			
+    	    		}
+    			},
+    			hMac.getMacLength()+finalMessage.length+2*Integer.BYTES
+    			);
+    	
+		return returnValue;
+    }
     
     public byte[] decript(byte[] data) throws BadPaddingException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, IllegalBlockSizeException, NoSuchProviderException, NoSuchPaddingException, InvalidKeyException {
     	int offset = 0;
@@ -70,7 +139,62 @@ public class Hashing {
         return digest.digest(data);
     }
 
-   
+    public byte[] encriptSecurePayload(byte[] data, String username) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, ShortBufferException, BadPaddingException, IllegalBlockSizeException, NoSuchProviderException {
+        cipher = Cipher.getInstance(props.getProperty("SEA")+"/"+props.getProperty("MODE")+"/"+props.getProperty("PADDING"),"BC");
+        byte[] encoded = sha256Encoder(data);
+//		TODO: Este é o long que tem de ser incrementado o objectivo nao é ser um random long
+        SecureRandom s = new SecureRandom();
+        byte[] secured = computeSAttributes(
+    			new ArrayList<byte[]>() {
+    	    		/**
+					 * 
+					 */
+					private static final long serialVersionUID = -7906419280715964605L;
+
+					{
+    	    			add(ByteBuffer.allocate( Integer.BYTES ).putInt(username.getBytes().length).array());
+    	    			add(ByteBuffer.allocate( Integer.BYTES ).putInt(data.length).array());
+    	    			add(username.getBytes());
+    	    			add(ByteBuffer.allocate( Long.BYTES ).putLong(s.nextLong()).array());
+    	    			add(data);
+    	    			add(encoded);
+    	    			
+    	    		}
+    			},
+    			Integer.BYTES*2+username.getBytes().length+ Long.BYTES+data.length+encoded.length
+        		);
+
+        cipher.init(Cipher.ENCRYPT_MODE, this.sessionKey);
+
+        byte[] cipherText = new byte[cipher.getOutputSize(secured.length + hMac.getMacLength())];
+
+        int ctLength = cipher.update(secured, 0, secured.length, cipherText, 0);
+
+        hMac.update(secured);
+
+        ctLength += cipher.doFinal(hMac.doFinal(), 0, hMac.getMacLength(), cipherText, ctLength);
+
+        IV = cipher.getIV();
+        
+        byte[] retValue = computeSAttributes(
+    			new ArrayList<byte[]>() {
+
+					/**
+					 * 
+					 */
+					private static final long serialVersionUID = -967209232836137478L;
+
+					{
+    	    			add(ByteBuffer.allocate( Integer.BYTES ).putInt(Integer.BYTES+cipherText.length+16).array());
+    	    			add(IV);
+    	    			add(cipherText);
+    	    			
+    	    		}
+    			},
+    			Integer.BYTES+16+cipherText.length
+        		);
+        return retValue;
+    }
     
     public byte[] decryptSecurePayload(byte[] data) throws InvalidKeyException, BadPaddingException, IllegalBlockSizeException, InvalidAlgorithmParameterException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         cipher = Cipher.getInstance(props.getProperty("SEA")+"/"+props.getProperty("MODE")+"/"+props.getProperty("PADDING"),"BC");

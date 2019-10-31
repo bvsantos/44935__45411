@@ -15,8 +15,19 @@ public class SMCPSocket extends MulticastSocket {
         this.hasher = new Hashing(port,props,hostAddress,aux);
     }
 
-   
-    
+    public void send(DatagramPacket p, String username) throws IOException{
+        try {
+//          p.setData(securePayloadEncrypt(p.getData(),username));
+			//p.setData(this.hasher.encriptSecurePayload(p.getData(),username));
+            p.setData(this.hasher.encript(p.getData(),username));
+		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException | ShortBufferException
+				| BadPaddingException | IllegalBlockSizeException | NoSuchProviderException e) {
+			e.printStackTrace();
+		}
+        super.send(p);
+
+
+    }
 
     public void receive(DatagramPacket p) throws IOException {
 	    super.receive(p);
