@@ -3,6 +3,9 @@ import keystore.GenerateKeys;
 import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+
+import Exceptions.WrongMacException;
+
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -34,8 +37,10 @@ public class Hashing {
         this.macKey = GenerateKeys.loadKey(aux+"mackm");
         this.sessionKey = new SecretKeySpec(this.sessionKey.getEncoded(),props.getProperty("SEA"));
         this.macKey = new SecretKeySpec(this.sessionKey.getEncoded(),props.getProperty("MAC"));
-        if(props.getProperty("MODE").equals("NoPadding"));
+        if(props.getProperty("MODE").equals("NoPadding"))
         	cipher = Cipher.getInstance(props.getProperty("SEA")+"/"+props.getProperty("MODE")+"/"+props.getProperty("PADDING"),"BC");
+        else
+			cipher = Cipher.getInstance(props.getProperty("SEA")+"/"+props.getProperty("MODE")+"/"+props.getProperty("PADDING"));
         hMac = Mac.getInstance(props.getProperty("MAC"));
         hMac.init(this.macKey);
     }
@@ -111,7 +116,7 @@ public class Hashing {
 		return returnValue;
     }
     
-    public byte[] decript(byte[] data) throws BadPaddingException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, IllegalBlockSizeException, NoSuchProviderException, NoSuchPaddingException, InvalidKeyException {
+    public byte[] decript(byte[] data) throws BadPaddingException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, IllegalBlockSizeException, NoSuchProviderException, NoSuchPaddingException, InvalidKeyException, WrongMacException {
     	int offset = 0;
     	int packageLength = new BigInteger(Arrays.copyOfRange(data, offset, Integer.BYTES)).intValue();
     	offset+=Integer.BYTES;
@@ -126,8 +131,7 @@ public class Hashing {
 		byte[] macVerify = Arrays.copyOfRange(data, offset,offset+hMac.getMacLength());
 		byte[] processMac = hMac.doFinal();
 		if(!Arrays.equals(macVerify, processMac)) {
-			//TODO: THROW WRONNG MAC EXCEPTION
-			System.out.println();
+			throw  new WrongMacException();
 		}
 
 		byte vID = encodedMessage[0];

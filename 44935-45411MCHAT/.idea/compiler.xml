@@ -9,8 +9,5 @@
         <module name="44935-45411MCHAT" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel>
-      <module name="44935-45411MCHAT" target="8" />
-    </bytecodeTargetLevel>
   </component>
 </project>
