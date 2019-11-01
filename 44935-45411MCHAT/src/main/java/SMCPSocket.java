@@ -1,4 +1,7 @@
 import javax.crypto.*;
+
+import Exceptions.WrongMacException;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.MulticastSocket;
@@ -39,7 +42,7 @@ public class SMCPSocket extends MulticastSocket {
 	        p.setData(data); 
 		} catch ( BadPaddingException | IllegalBlockSizeException
 				| InvalidAlgorithmParameterException | NoSuchPaddingException | NoSuchAlgorithmException
-				| NoSuchProviderException | InvalidKeyException e) {
+				| NoSuchProviderException | InvalidKeyException | WrongMacException e) {
 			e.printStackTrace();
 		}
     }

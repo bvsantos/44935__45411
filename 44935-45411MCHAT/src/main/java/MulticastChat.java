@@ -103,7 +103,7 @@ public class MulticastChat extends Thread {
         switch(this.groupAdress.getHostAddress()+":"+port){
             case "224.5.6.7:9000":
                 return 0;
-            case "252.10.20.30:12224":
+            case "232.10.20.30:12224":
                 return 1;
             case "230.100.100.100:6666":
                 return 2;

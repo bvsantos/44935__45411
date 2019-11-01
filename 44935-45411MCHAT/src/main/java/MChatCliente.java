@@ -14,12 +14,15 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.security.*;
 import java.security.cert.CertificateException;
 import java.util.Enumeration;
 import java.util.Iterator;
+import java.util.Scanner;
 
 // Interface para a sessao de chat swing-based
 // e pode ir sendo melhorada pelos alunos para acomodar as
@@ -310,47 +313,104 @@ public class MChatCliente extends JFrame implements MulticastChatEventListener
 
     // Command-line invocation expecting three arguments
     public static void main(String[] args) {
-        if ((args.length != 3) && (args.length != 4)) {
-            System.err.println("Utilizar: MChatCliente "
-                    + "<nickusername> <grupo IPMulticast> <porto> { <ttl> }");
-            System.err.println("       - TTL default = 1");
-            System.exit(1);
-        }
+//        if ((args.length != 3) && (args.length != 4)) {
+//            System.err.println("Utilizar: MChatCliente "
+//                    + "<nickusername> <grupo IPMulticast> <porto> { <ttl> }");
+//            System.err.println("       - TTL default = 1");
+//            System.exit(1);
+//        }
 
-        String username = args[0];
-        InetAddress group = null;
-        int port = -1;
+        Scanner br = new Scanner(System.in);
+        System.out.println("Enter your username:");
+        String username = br.nextLine();
+        InetAddress group=null;
+        int select = 0;
+        int  port = 9000;
         int ttl = 1;
+        boolean flag = true;
+        while (flag){
+            switch(select){
+                case 1:
+                    try {
+                        group = InetAddress.getByName("224.5.6.7");
+                    } catch (Throwable e) {
+                        System.err.println("Endereco de grupo multicast invalido: "
+                                + e.getMessage());
+                        System.exit(1);
 
-        try {
-            group = InetAddress.getByName(args[1]);
-        } catch (Throwable e) {
-            System.err.println("Endereco de grupo multicast invalido: "
-                    + e.getMessage());
-            System.exit(1);
-        }
+                    }
+                    port = 9000;
+                    flag = false;
+                    break;
+                case 2:
+                    try {
+                        group = InetAddress.getByName("232.10.20.30");
+                    } catch (Throwable e) {
+                        System.err.println("Endereco de grupo multicast invalido: "
+                                + e.getMessage());
+                        System.exit(1);
 
-        if (!group.isMulticastAddress()) {
-            System.err.println("Argumento Grupo '" + args[1]
-                    + "' nao e um end. IP multicast");
-            System.exit(1);
-        }
+                    }
+                    port = 12224;
+                    flag = false;
+                    break;
+                case 3:
+                    try {
+                        group = InetAddress.getByName("230.100.100.100");
+                    } catch (Throwable e) {
+                        System.err.println("Endereco de grupo multicast invalido: "
+                                + e.getMessage());
+                        System.exit(1);
 
-        try {
-            port = Integer.parseInt(args[2]);
-        } catch (NumberFormatException e) {
-            System.err.println("Porto invalido: " + args[2]);
-            System.exit(1);
-        }
-
-        if (args.length >= 4) {
-            try {
-                ttl = Integer.parseInt(args[3]);
-            } catch (NumberFormatException e) {
-                System.err.println("TTL invalido: " + args[3]);
-                System.exit(1);
+                    }
+                    port = 6666;
+                    flag = false;
+                    break;
+                default:
+                    System.out.println("Select your server(write int):");
+                    System.out.println("1 - 224.5.6.7:9000 (AES/GCM/NoPadding)");
+                    System.out.println("2 - 232.10.20.30:12224 (AES/CFB/NoPadding)");
+                    System.out.println("3 - 230.100.100.100:6666 (AES/CFB/PKCS5Padding)");
+                    select = br.nextInt();
+                    br.nextLine();
+                    break;
             }
         }
+        
+//        String username = args[0];
+//        InetAddress group = null;
+//        int port = -1;
+//        int ttl = 1;
+//
+//        try {
+//            group = InetAddress.getByName(args[1]);
+//        } catch (Throwable e) {
+//            System.err.println("Endereco de grupo multicast invalido: "
+//                    + e.getMessage());
+//            System.exit(1);
+//        }
+//
+//        if (!group.isMulticastAddress()) {
+//            System.err.println("Argumento Grupo '" + args[1]
+//                    + "' nao e um end. IP multicast");
+//            System.exit(1);
+//        }
+//
+//        try {
+//            port = Integer.parseInt(args[2]);
+//        } catch (NumberFormatException e) {
+//            System.err.println("Porto invalido: " + args[2]);
+//            System.exit(1);
+//        }
+//
+//        if (args.length >= 4) {
+//            try {
+//                ttl = Integer.parseInt(args[3]);
+//            } catch (NumberFormatException e) {
+//                System.err.println("TTL invalido: " + args[3]);
+//                System.exit(1);
+//            }
+//        }
 
         try {
             MChatCliente frame = new MChatCliente();

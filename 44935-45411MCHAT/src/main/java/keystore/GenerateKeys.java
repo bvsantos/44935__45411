@@ -1,10 +1,12 @@
 package keystore;
 
 
+
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -31,20 +33,20 @@ public class GenerateKeys {
 
         // save my secret key
 
-        KeyGenerator generator = KeyGenerator.getInstance("DES");
+        KeyGenerator generator = KeyGenerator.getInstance("AES");
 
-        generator.init(64);
+        generator.init(256);
 
         Key encryptionKey = generator.generateKey();
         KeyStore.SecretKeyEntry skEntry =
           new KeyStore.SecretKeyEntry((SecretKey) encryptionKey);
-        //ks.setEntry("Csessionkey", skEntry, protParam);
+//        ks.setEntry("Csessionkey", skEntry, protParam);
         //KeyStore.SecretKeyEntry skEntry =
                 new KeyStore.SecretKeyEntry((SecretKey) encryptionKey);
-        ks.setEntry("Cmackm", skEntry, protParam);
+        ks.setEntry("Bmackm", skEntry, protParam);
 //      KeyStore.SecretKeyEntry skEntry =
 //                new KeyStore.SecretKeyEntry((SecretKey) encryptionKey);
-        ks.setEntry("Cmacka", skEntry, protParam);
+//        ks.setEntry("Bmacka", skEntry, protParam);
 
         // store away the keystore
 
