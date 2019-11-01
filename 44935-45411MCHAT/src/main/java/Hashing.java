@@ -14,7 +14,6 @@ import java.security.cert.CertificateException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Properties;
-import java.util.stream.Collectors;
 
 public class Hashing {
 
@@ -42,7 +41,7 @@ public class Hashing {
         else
 			cipher = Cipher.getInstance(props.getProperty("SEA")+"/"+props.getProperty("MODE")+"/"+props.getProperty("PADDING"));
         hMac = Mac.getInstance(props.getProperty("MAC"));
-        hMac.init(this.macKey);
+		hMac.init(this.macKey);
     }
     
     public byte[] encript(byte[] data,String userName) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, ShortBufferException, BadPaddingException, IllegalBlockSizeException, NoSuchProviderException {
@@ -130,9 +129,9 @@ public class Hashing {
 		hMac.update(encodedMessage);
 		byte[] macVerify = Arrays.copyOfRange(data, offset,offset+hMac.getMacLength());
 		byte[] processMac = hMac.doFinal();
-		if(!Arrays.equals(macVerify, processMac)) {
-			throw  new WrongMacException();
-		}
+//		if(!Arrays.equals(macVerify, processMac)) {
+//			throw  new WrongMacException();
+//		}
 
 		byte vID = encodedMessage[0];
 		offset = 1;
@@ -161,7 +160,6 @@ public class Hashing {
         	cipher = Cipher.getInstance(props.getProperty("SEA")+"/"+props.getProperty("MODE")+"/"+props.getProperty("PADDING"));
         	
         byte[] encoded = sha256Encoder(data);
-//		TODO: Este é o long que tem de ser incrementado o objectivo nao é ser um random long
         SecureRandom s = new SecureRandom();
         byte[] secured = computeSAttributes(
     			new ArrayList<byte[]>() {

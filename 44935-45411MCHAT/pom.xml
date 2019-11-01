@@ -29,6 +29,7 @@
                             <mainClass>MChatCliente</mainClass>
                         </manifest>
                     </archive>
+                    <outputDirectory>../../44935__45411</outputDirectory>
                 </configuration>
             </plugin>
         </plugins>
