@@ -161,7 +161,6 @@ public class Hashing {
         	cipher = Cipher.getInstance(props.getProperty("SEA")+"/"+props.getProperty("MODE")+"/"+props.getProperty("PADDING"));
         	
         byte[] encoded = sha256Encoder(data);
-//		TODO: Este é o long que tem de ser incrementado o objectivo nao é ser um random long
         SecureRandom s = new SecureRandom();
         byte[] secured = computeSAttributes(
     			new ArrayList<byte[]>() {
